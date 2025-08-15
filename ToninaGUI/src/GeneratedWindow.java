@@ -22,8 +22,14 @@ public class GeneratedWindow  {
     static String SongAlbum;
     static String SongAlbumPosition;
     static String SongGender;
+    static MusicDownloaderEngine musicDownloader;
+    static String AlbumPath;
 
     public static void Window(){
+        // Initializing the musicDownloader object
+        try {
+            musicDownloader = new MusicDownloaderEngine();
+        } catch (Exception e) {e.printStackTrace();}
         //the first process please ignore-------------------------------------------------------------------------------
         WaitingAnimation.add("(´•ω•｀) Downloading...");
         WaitingAnimation.add("(´•ω•｀) Downloading.. .");
@@ -257,7 +263,7 @@ public class GeneratedWindow  {
                     if (UserResponse == JFileChooser.APPROVE_OPTION){
                         ProgressBar.setText("(灬º‿º灬)♡ GREAT CHOICE!!!! (ᗒᗨᗕ)");
                         File AlbumAbsolutePathFile = new File(AlbumImageFileChooser.getSelectedFile().getAbsolutePath());
-                        String AlbumPath = String.valueOf(AlbumAbsolutePathFile);
+                        AlbumPath = String.valueOf(AlbumAbsolutePathFile);
                         BufferedImage img = null;
                         try {
                             img = ImageIO.read(new File(AlbumAbsolutePathFile.toURI()));
@@ -306,25 +312,28 @@ public class GeneratedWindow  {
             public void actionPerformed(ActionEvent e) {
                 if (e.getSource()==DownloadButton){
                     frameAnimation = 0;
+                    /*-------------------------------------------------------------------------------*/
+                    /*This is the line that calls the music downloader engine and starts the download*/
+                    downloadSong(TitleTextField.getText(),ArtistTextField.getText(),
+                            AlbumTextField.getText(),AlbumPositionTextField.getText(),
+                            GenderTextField.getText(),LinkTextField.getText());
+                    /*-------------------------------------------------------------------------------*/
                     Timer timer = new Timer();
                     TimerTask task = new TimerTask() {
                         @Override
                         public void run() {
-                            if (SongIsDownload == false){
-                                ProgressBar.setText(WaitingAnimation.get(frameAnimation));
-                                frameAnimation++;
-                                if (frameAnimation >= WaitingAnimation.size()){
-                                    //frameAnimation = 0;
-                                    SongIsDownload = true;
-                                    SongLink = LinkTextField.getText();
-                                    SongTitle = TitleTextField.getText();
-                                    SongArtist = ArtistTextField.getText();
-                                    SongAlbum = AlbumTextField.getText();
-                                    SongAlbumPosition = AlbumPositionTextField.getText();
-                                    SongGender = GenderTextField.getText();
-                                    ProgressBar.setText("(･_･)b Your download has been completed ( ღ˘⌣˘ღ )");
-                                }
-                            //espacio para hacer SongIsDownload = true
+                            ProgressBar.setText(WaitingAnimation.get(frameAnimation));
+                            frameAnimation++;
+                            if (frameAnimation >= WaitingAnimation.size()){
+                                // Restarting the downloading animation...
+                                frameAnimation = 0;
+                            }
+
+                            if(musicDownloader.getHasSongBeenDownloaded()){
+                                // Stop the animation
+                                timer.cancel();
+                                ProgressBar.setText("(･_･)b Your download has been completed ( ღ˘⌣˘ღ )");
+                                return;
                             }
                         }
                     };
@@ -365,5 +374,20 @@ public class GeneratedWindow  {
         frame.add(DownloadPanel,BorderLayout.EAST);
         frame.add(AnimationPanel,BorderLayout.SOUTH);
         SwingUtilities.updateComponentTreeUI(frame);
+    }
+
+    private static void downloadSong(String songTitle, String artistName, String albumName, String positionInAlbum,
+                                     String songGenre, String youtubeUrl){
+        /*The download starts in a new thread so that animation in the user interface can happen.*/
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                musicDownloader.setHasSongBeenDownloaded(false);
+                musicDownloader.downloadSong(songTitle,artistName,albumName,positionInAlbum,
+                        songGenre,youtubeUrl,AlbumPath);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
     }
 }
